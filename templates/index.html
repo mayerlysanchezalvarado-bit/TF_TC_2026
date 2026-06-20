@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}GASO AAA · Cargar operaciones{% endblock %}
+
+{% block content %}
+<header class="masthead">
+  <div class="masthead-top">
+    <span>Compilador académico de un DSL propio</span>
+    <span class="tag">Paso 1 · Entrada</span>
+  </div>
+  <h1 class="title">DSL de Compras y Ventas — GASO AAA Export Import and Services</h1>
+  <div class="subtitle">Excel → DSL → Lexer → Parser → Árbol Sintáctico → JSON → Dashboard</div>
+</header>
+
+<div class="flow-strip" aria-label="Flujo del análisis">
+  <div class="flow-node active">Excel</div><div class="flow-arrow">→</div>
+  <div class="flow-node">DSL</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Lexer</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Parser</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Árbol sintáctico</div><div class="flow-arrow">→</div>
+  <div class="flow-node">JSON</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Dashboard</div>
+</div>
+
+<div class="grid-2">
+  <!-- ===================== CARGA DE EXCEL ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-num">A</div>
+      <h2>Cargar archivo Excel</h2>
+    </div>
+    <div class="section-body">
+      <p>Cada fila del Excel (operación, producto, cantidad, precio, fecha, cliente/proveedor) se convierte automáticamente en una sentencia del DSL y se compila.</p>
+
+      <form action="{{ url_for('cargar_excel') }}" method="post" enctype="multipart/form-data">
+        <div class="upload-zone" id="dropZone">
+          <p style="margin-bottom:14px;">📄 Arrastra tu archivo <b>.xlsx</b> aquí, o selecciónalo manualmente</p>
+          <input type="file" name="archivo_excel" id="archivoInput" accept=".xlsx,.xls" required>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="submit" class="btn">▶ Procesar Excel</button>
+          <a href="{{ url_for('descargar_ejemplo') }}" class="btn secondary">⬇ Descargar Excel de ejemplo</a>
+        </div>
+      </form>
+
+      <h3 class="subhead" style="margin-top:24px;">Columnas reconocidas</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Campo</th><th>Alias aceptados en el Excel</th></tr></thead>
+          <tbody>
+            <tr><td>operacion</td><td style="font-family:var(--sans)">operacion, tipo, movimiento</td></tr>
+            <tr><td>producto</td><td style="font-family:var(--sans)">producto, sku, codigo_producto</td></tr>
+            <tr><td>cantidad</td><td style="font-family:var(--sans)">cantidad, cant, qty</td></tr>
+            <tr><td>precio</td><td style="font-family:var(--sans)">precio, precio_unitario, p.unit</td></tr>
+            <tr><td>fecha</td><td style="font-family:var(--sans)">fecha, date <i>(opcional)</i></td></tr>
+            <tr><td>contraparte</td><td style="font-family:var(--sans)">cliente, proveedor <i>(opcional)</i></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ESCRITURA MANUAL ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-num">B</div>
+      <h2>Escribir DSL manualmente</h2>
+    </div>
+    <div class="section-body">
+      <p>Escribe directamente sentencias del DSL, una por línea. Útil para probar errores léxicos/sintácticos a propósito.</p>
+
+      <form action="{{ url_for('compilar_manual') }}" method="post">
+        <label class="field-label" for="codigo_dsl">Programa DSL</label>
+        <textarea name="codigo_dsl" id="codigo_dsl" spellcheck="false">{{ ejemplo_dsl }}</textarea>
+        <div style="margin-top:14px;">
+          <button type="submit" class="btn">▶ Compilar programa</button>
+        </div>
+      </form>
+
+      <h3 class="subhead amber" style="margin-top:24px;">Sintaxis soportada</h3>
+      <div class="code-box">COMPRA &lt;PRODUCTO&gt; &lt;CANTIDAD&gt; &lt;PRECIO&gt;
+VENTA  &lt;PRODUCTO&gt; &lt;CANTIDAD&gt; &lt;PRECIO&gt;
+
+<span class="gl"># Ejemplos válidos</span>
+COMPRA PROD-AUD-001 50 25.00
+VENTA  PROD-MOU-001 25 70.00</div>
+    </div>
+  </section>
+</div>
+
+{% if tiene_resultados %}
+<div class="section" style="border-color:var(--compiler-green);">
+  <div class="section-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <p style="margin:0;color:var(--ink);">
+      ✅ Ya tienes un programa compilado
+      {% if origen == 'excel' %} desde <b>{{ nombre_archivo }}</b>{% endif %}.
+      Continúa al compilador o al dashboard.
+    </p>
+    <div style="display:flex;gap:10px;">
+      <a href="{{ url_for('compilador') }}" class="btn secondary">Ver compilador →</a>
+      <a href="{{ url_for('dashboard') }}" class="btn">Ver dashboard →</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ===================== TOKENS / ER / GRAMATICA (referencia) ===================== -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">2</div>
+    <h2>Tokens y expresiones regulares del DSL</h2>
+  </div>
+  <div class="section-body">
+    <p>Estas son las definiciones formales que usará el lexer para clasificar cada lexema, sin importar si el programa viene de un Excel o fue escrito a mano.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Token</th><th>Expresión regular</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          {% for row in token_regex_table %}
+          <tr>
+            <td><b>{{ row.token }}</b></td>
+            <td>{{ row.regex }}</td>
+            <td>{{ row.ejemplo }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">3</div>
+    <h2>Gramática libre de contexto</h2>
+  </div>
+  <div class="section-body">
+    <p>Una GLC se define como <code class="kw">G = (V, Σ, P, S)</code>: V variables no terminales, Σ alfabeto terminal, P producciones, S símbolo inicial.</p>
+    <div class="code-box">Gramática G = (V, Σ, P, S)
+
+<span class="gv">V</span> = {{ '{' }}{{ gramatica.variables | join(', ') }}{{ '}' }}
+<span class="gv">Σ</span> = {{ '{' }}{{ gramatica.terminales | join(', ') }}{{ '}' }}
+<span class="gv">S</span> = {{ gramatica.simbolo_inicial }}
+
+Producciones P:
+{% for p in gramatica.producciones %} {{ loop.index }})  {{ p }}
+{% endfor %}</div>
+  </div>
+</section>
+
+<p class="footer-note">GASO AAA EXPORT IMPORT AND SERVICES · DSL académico construido con Python + Flask</p>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const archivoInput = document.getElementById('archivoInput');
+['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault(); dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) archivoInput.files = e.dataTransfer.files;
+});
+</script>
+{% endblock %}

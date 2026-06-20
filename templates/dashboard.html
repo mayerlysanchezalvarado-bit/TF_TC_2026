@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}GASO AAA · Dashboard{% endblock %}
+
+{% block content %}
+<header class="masthead">
+  <div class="masthead-top">
+    <span>Visualización final del JSON generado por el compilador</span>
+    <span class="tag">Paso 3 · Dashboard</span>
+  </div>
+  <h1 class="title">Dashboard de Ingresos / Compras</h1>
+  <div class="subtitle">
+    {% if origen == 'excel' %} Origen: Excel — {{ nombre_archivo }} {% else %} Origen: escritura manual {% endif %}
+  </div>
+</header>
+
+<div class="flow-strip">
+  <div class="flow-node">Excel</div><div class="flow-arrow">→</div>
+  <div class="flow-node">DSL</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Lexer</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Parser</div><div class="flow-arrow">→</div>
+  <div class="flow-node">Árbol sintáctico</div><div class="flow-arrow">→</div>
+  <div class="flow-node">JSON</div><div class="flow-arrow">→</div>
+  <div class="flow-node active">Dashboard</div>
+</div>
+
+<section class="section">
+  <div class="section-head"><div class="section-num">📊</div><h2>Resumen general — GASO AAA</h2></div>
+  <div class="section-body">
+    <div class="dash">
+      <div class="dash-top">
+        <div class="dash-brand">
+          <div class="logo">G</div>
+          <div class="name">GASO AAA<small>EXPORT IMPORT AND SERVICES</small></div>
+        </div>
+        <div class="dash-period">📅 {{ periodo }}</div>
+      </div>
+
+      <!-- KPI ROW -->
+      <div class="kpi-row">
+        <div class="kpi income">
+          <div class="kpi-label">Ventas totales</div>
+          <div class="kpi-value">S/ {{ "{:,.2f}".format(datos.kpis.ventas_totales) }}</div>
+        </div>
+        <div class="kpi expense">
+          <div class="kpi-label">Compras totales</div>
+          <div class="kpi-value">S/ {{ "{:,.2f}".format(datos.kpis.compras_totales) }}</div>
+        </div>
+        <div class="kpi profit">
+          <div class="kpi-label">Utilidad bruta</div>
+          <div class="kpi-value">S/ {{ "{:,.2f}".format(datos.kpis.utilidad_bruta) }}</div>
+          <div class="kpi-delta {{ 'neg' if datos.kpis.margen_pct < 0 else '' }}">{{ datos.kpis.margen_pct }}% margen</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Operaciones</div>
+          <div class="kpi-value">{{ datos.kpis.num_operaciones }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Productos registrados</div>
+          <div class="kpi-value">{{ datos.kpis.productos_registrados }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Clientes activos</div>
+          <div class="kpi-value">{{ datos.kpis.clientes_activos }}</div>
+        </div>
+      </div>
+
+      <!-- BAR + DONUT + INCOME SUMMARY -->
+      <div class="dash-grid">
+        <div class="panel">
+          <h3>Compras y ventas mensuales (S/)</h3>
+          {% if datos.serie_mensual.etiquetas %}
+          <div class="bars">
+            {% for etq in datos.serie_mensual.etiquetas %}
+            <div class="bar-col">
+              <div class="bar-pair" style="height:110px;">
+                <div class="bar compra" style="height:{{ (datos.serie_mensual.compras[loop.index0] / datos.serie_mensual.max * 100) | round(0) }}%;" title="Compras: S/ {{ datos.serie_mensual.compras[loop.index0] }}"></div>
+                <div class="bar venta" style="height:{{ (datos.serie_mensual.ventas[loop.index0] / datos.serie_mensual.max * 100) | round(0) }}%;" title="Ventas: S/ {{ datos.serie_mensual.ventas[loop.index0] }}"></div>
+              </div>
+              <span class="bl">{{ etq }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="bar-legend">
+            <span><span class="sw" style="background:var(--amber);"></span> Compras</span>
+            <span><span class="sw" style="background:var(--biz-blue);"></span> Ventas</span>
+          </div>
+          {% else %}
+          <p style="text-align:center;color:var(--ink-soft);">Sin datos de fecha para graficar.</p>
+          {% endif %}
+        </div>
+
+        <div class="panel">
+          <h3>Ingresos por producto</h3>
+          {% if datos.distribucion_ventas %}
+          <div class="donut-wrap">
+            <svg width="120" height="120" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E4EAF2" stroke-width="4"></circle>
+              {% set colores = ['#28456E','#1F6E4C','#B4711F','#9C3B2E','#6b5b95'] %}
+              {% set ns = namespace(offset=25) %}
+              {% for d in datos.distribucion_ventas %}
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ colores[loop.index0 % colores|length] }}" stroke-width="4"
+                  stroke-dasharray="{{ d.pct }} {{ 100 - d.pct }}" stroke-dashoffset="{{ ns.offset }}"></circle>
+                {% set ns.offset = ns.offset - d.pct %}
+              {% endfor %}
+              <text x="18" y="17" text-anchor="middle" font-size="3.6" font-weight="800" fill="#1B1D1B" font-family="Inter">S/ {{ "{:,.0f}".format(datos.kpis.ventas_totales) }}</text>
+              <text x="18" y="21" text-anchor="middle" font-size="2.6" fill="#4A4D49" font-family="Inter">Ventas</text>
+            </svg>
+            <div style="width:100%">
+              {% for d in datos.distribucion_ventas %}
+              <div class="legend-row">
+                <span class="legend-dot" style="background:{{ colores[loop.index0 % colores|length] }}"></span>
+                {{ d.nombre }} <span class="amt">{{ d.pct }}%</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <p style="text-align:center;color:var(--ink-soft);">Sin ventas registradas.</p>
+          {% endif %}
+        </div>
+
+        <div class="panel">
+          <h3>Resumen de ingresos</h3>
+          <table class="income-table">
+            <thead><tr><th>Concepto</th><th>Monto (S/)</th></tr></thead>
+            <tbody>
+              <tr class="total-row"><td>VENTAS TOTALES</td><td>{{ "{:,.2f}".format(datos.resumen_ingresos.ventas_totales) }}</td></tr>
+              <tr><td>Costo de compras</td><td>({{ "{:,.2f}".format(datos.resumen_ingresos.costo_compras) }})</td></tr>
+              <tr class="profit-row"><td>UTILIDAD BRUTA</td><td>{{ "{:,.2f}".format(datos.resumen_ingresos.utilidad_bruta) }}</td></tr>
+              <tr><td>Margen</td><td>{{ datos.resumen_ingresos.margen_pct }}%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COMPRAS / VENTAS RECIENTES -->
+      <div class="dash-tables">
+        <div class="panel">
+          <h3>Compras recientes</h3>
+          {% if datos.compras_recientes %}
+          <table>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Producto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
+            <tbody>
+              {% for c in datos.compras_recientes %}
+              <tr>
+                <td>{{ c.fecha or '-' }}</td>
+                <td>{{ c.contraparte or '-' }}</td>
+                <td>{{ c.nombre_producto or c.producto }}</td>
+                <td>{{ c.cantidad }}</td>
+                <td>{{ "%.2f"|format(c.precio) }}</td>
+                <td>{{ "{:,.2f}".format(c.total) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p style="text-align:center;color:var(--ink-soft);">Sin compras registradas.</p>
+          {% endif %}
+        </div>
+        <div class="panel">
+          <h3>Ventas recientes</h3>
+          {% if datos.ventas_recientes %}
+          <table>
+            <thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
+            <tbody>
+              {% for v in datos.ventas_recientes %}
+              <tr>
+                <td>{{ v.fecha or '-' }}</td>
+                <td>{{ v.contraparte or '-' }}</td>
+                <td>{{ v.nombre_producto or v.producto }}</td>
+                <td>{{ v.cantidad }}</td>
+                <td>{{ "%.2f"|format(v.precio) }}</td>
+                <td>{{ "{:,.2f}".format(v.total) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p style="text-align:center;color:var(--ink-soft);">Sin ventas registradas.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- PRODUCTOS MAS RENTABLES -->
+      <div class="panel">
+        <h3>Productos más rentables</h3>
+        {% if datos.productos_top %}
+        <table>
+          <thead><tr><th>Producto</th><th>Unidades vendidas</th><th>Utilidad (S/)</th></tr></thead>
+          <tbody>
+            {% for p in datos.productos_top %}
+            <tr>
+              <td>{{ p.nombre }}</td>
+              <td>{{ p.unidades_vendidas }}</td>
+              <td style="color:{{ 'var(--accent-red)' if p.utilidad < 0 else 'var(--compiler-green)' }};font-weight:700;">{{ "{:,.2f}".format(p.utilidad) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="text-align:center;color:var(--ink-soft);">Sin datos suficientes.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section" style="border-color:var(--ink);">
+  <div class="section-body" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+    <a href="{{ url_for('compilador') }}" class="btn secondary">← Ver proceso de compilación</a>
+    <a href="{{ url_for('reiniciar') }}" class="btn amber">↺ Reiniciar sesión</a>
+  </div>
+</div>
+
+<p class="footer-note">GASO AAA EXPORT IMPORT AND SERVICES · Dashboard generado a partir del JSON traducido por el compilador del DSL</p>
+{% endblock %}
