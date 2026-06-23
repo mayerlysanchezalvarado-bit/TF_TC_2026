@@ -44,15 +44,12 @@ os.makedirs(SAMPLE_DIR, exist_ok=True)
 app = Flask(__name__)
 app.secret_key = "gaso-aaa-dsl-academico-2024"
 
-# ---------------------------------------------------------------------------
-# Estado en memoria (simplificación académica: sin base de datos)
-# ---------------------------------------------------------------------------
 ESTADO = {
-    "programa_dsl": "",            # texto fuente completo (todas las sentencias)
-    "resultados_compilacion": [],  # lista de dicts (uno por línea) de compilar_sentencia
-    "operaciones": [],             # lista de operaciones JSON ya interpretadas (válidas)
-    "advertencias_excel": [],      # filas de Excel descartadas
-    "origen": None,                # "excel" | "manual" | None
+    "programa_dsl": "",           
+    "resultados_compilacion": [], 
+    "operaciones": [],            
+    "advertencias_excel": [],     
+    "origen": None,               
     "nombre_archivo": None,
 }
 
@@ -94,10 +91,6 @@ def _recompilar_programa(texto_dsl: str):
     return resultados, operaciones
 
 
-# ---------------------------------------------------------------------------
-# Rutas de páginas
-# ---------------------------------------------------------------------------
-
 @app.route("/")
 def index():
     return render_template(
@@ -131,14 +124,10 @@ def cargar_excel():
         flash("El Excel no tiene filas válidas para compilar.", "error")
         return redirect(url_for("index"))
 
-    # Convertimos cada fila válida en una sentencia DSL y compilamos
-    # el programa completo (preserva fecha/contraparte adicionales).
     lineas_dsl = [f["sentencia"] for f in filas_validas]
     texto_dsl = "\n".join(lineas_dsl)
     resultados, operaciones = _recompilar_programa(texto_dsl)
 
-    # Enriquecemos las operaciones con fecha/contraparte del Excel original
-    # (se mapean por posición ya que cada fila válida generó una sentencia)
     for op, fila in zip(operaciones, filas_validas):
         op["fecha"] = fila["fecha"]
         op["contraparte"] = fila["contraparte"]
@@ -174,8 +163,6 @@ def compilador():
 
     lexemas_unicos = extraer_lexemas_unicos(ESTADO["programa_dsl"])
 
-    # Tomamos la primera sentencia válida como "ejemplo destacado"
-    # para mostrar el árbol sintáctico completo y la traza de AFD/AFND.
     ejemplo_destacado = next(
         (r for r in ESTADO["resultados_compilacion"] if r["resultado"]), None
     )
@@ -215,11 +202,6 @@ def dashboard():
         periodo="Mayo 2024" if ESTADO["origen"] == "excel" else "Sesión manual",
     )
 
-
-# ---------------------------------------------------------------------------
-# API (usadas por JS para dibujar AFND/AFD y trazas de reconocimiento)
-# ---------------------------------------------------------------------------
-
 @app.route("/api/automata/<token>")
 def api_automata(token):
     token = token.upper()
@@ -246,8 +228,7 @@ def api_automata(token):
             "estado_inicial": afd.estado_inicial,
             "estados_finales": afd.estados_finales,
             "tabla": afd.tabla(),
-            # transiciones como lista de tuplas [origen, simbolo, destino],
-            # mismo formato que el AFND, para que el dibujante JS sea unico.
+                        
             "transiciones": [[o, s, d] for (o, s), d in afd.transiciones.items()],
         },
     })
