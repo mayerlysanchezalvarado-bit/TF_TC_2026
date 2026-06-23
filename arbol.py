@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 """
 arbol.py
 --------
@@ -25,7 +25,7 @@ from typing import List, Optional
 
 @dataclass
 class NodoArbol:
-    simbolo: str                       # Ej: 'S', 'Operacion', 'COMPRA', 'PROD-AUD-001'
+    simbolo: str                      
     es_terminal: bool = False
     hijos: List["NodoArbol"] = field(default_factory=list)
 
