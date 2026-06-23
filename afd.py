@@ -27,17 +27,12 @@ from typing import Dict, List, Tuple, Optional
 
 EPSILON = "ε"
 
-
-# ---------------------------------------------------------------------------
-# Estructuras genéricas
-# ---------------------------------------------------------------------------
-
 @dataclass
 class AFND:
     nombre: str
     estados: List[str]
     alfabeto: List[str]
-    transiciones: List[Tuple[str, str, str]]   # (origen, simbolo, destino) simbolo puede ser EPSILON
+    transiciones: List[Tuple[str, str, str]]  
     estado_inicial: str
     estados_finales: List[str]
 
@@ -59,10 +54,10 @@ class AFD:
     nombre: str
     estados: List[str]
     alfabeto: List[str]
-    transiciones: Dict[Tuple[str, str], str]   # (estado, simbolo_clase) -> estado
+    transiciones: Dict[Tuple[str, str], str]  
     estado_inicial: str
     estados_finales: List[str]
-    clasificador: callable = None  # funcion(char) -> nombre_de_clase ('letra','digito','otro',...)
+    clasificador: callable = None  
 
     def tabla(self) -> List[Dict]:
         filas = []
@@ -102,9 +97,6 @@ class AFD:
         return {"aceptada": aceptada, "pasos": pasos, "estado_final": estado}
 
 
-# ---------------------------------------------------------------------------
-# Clasificadores de caracteres (usados por los AFD)
-# ---------------------------------------------------------------------------
 
 def clase_producto(ch: str) -> str:
     if ch.isalpha() and ch.isupper():
@@ -142,12 +134,6 @@ def clase_letra_generica(ch: str) -> str:
     return "OTRO"
 
 
-# ---------------------------------------------------------------------------
-# AFND para PRODUCTO  ->  ^PROD-[A-Z]{3}-\d{3}$
-#   Diseñado con una ε-transición que representa el "salto" entre el
-#   prefijo literal "PROD-" y el cuerpo variable, tal como se vería
-#   en la construcción de Thompson antes de fusionar los fragmentos.
-# ---------------------------------------------------------------------------
 
 AFND_PRODUCTO = AFND(
     nombre="AFND_PRODUCTO",
@@ -159,12 +145,12 @@ AFND_PRODUCTO = AFND(
         ("q2", "O", "q3"),
         ("q3", "D", "q4"),
         ("q4", "-", "q5"),
-        ("q5", EPSILON, "q5a"),          # ε: entrada al bloque de 3 mayúsculas
+        ("q5", EPSILON, "q5a"),         
         ("q5a", "MAYUS", "q6"),
         ("q6", "MAYUS", "q7"),
         ("q7", "MAYUS", "q8"),
         ("q8", "-", "q9"),
-        ("q9", EPSILON, "q9a"),          # ε: entrada al bloque de 3 dígitos
+        ("q9", EPSILON, "q9a"),        
         ("q9a", "DIGITO", "q10"),
         ("q10", "DIGITO", "q11"),
         ("q11", "DIGITO", "qf"),
@@ -172,23 +158,20 @@ AFND_PRODUCTO = AFND(
     estado_inicial="q0",
     estados_finales=["qf"],
 )
-# nota: estados intermedios q5a/q9a representan el resultado de eliminar
-# la ε en la construccion de Thompson; se listan explicitamente para
-# que la tabla de transiciones del AFND sea fiel a la teoria (NFA con ε).
+.
 AFND_PRODUCTO.estados = ["q0", "q1", "q2", "q3", "q4", "q5", "q5a", "q6", "q7",
                           "q8", "q9", "q9a", "q10", "q11", "qf"]
 
 
-# AFD equivalente para PRODUCTO (determinizado / minimizado a mano)
 AFD_PRODUCTO = AFD(
     nombre="AFD_PRODUCTO",
     estados=["q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "qf", "ERROR"],
     alfabeto=["MAYUS", "DIGITO", "GUION", "OTRO"],
     transiciones={
-        ("q0", "MAYUS"): "q1",   # P
-        ("q1", "MAYUS"): "q2",   # R
-        ("q2", "MAYUS"): "q3",   # O
-        ("q3", "MAYUS"): "q4",   # D
+        ("q0", "MAYUS"): "q1", 
+        ("q1", "MAYUS"): "q2", 
+        ("q2", "MAYUS"): "q3", 
+        ("q3", "MAYUS"): "q4", 
         ("q4", "GUION"): "q5",
         ("q5", "MAYUS"): "q5b",
         ("q5b", "MAYUS"): "q5c",
@@ -223,18 +206,14 @@ def validar_producto(cadena: str) -> Dict:
     patron = re.compile(r"^PROD-[A-Z]{3}-\d{3}$")
     aceptada_regex = bool(patron.match(cadena))
 
-    # Traza simbólica simplificada usando el AFD definido arriba,
-    # clasificando por tipo de caracter (MAYUS/DIGITO/GUION/OTRO)
+  
+  
     traza = AFD_PRODUCTO.simular(cadena)
     traza["aceptada_regex"] = aceptada_regex
     traza["cadena"] = cadena
     return traza
 
 
-# ---------------------------------------------------------------------------
-# AFD/AFND genérico para identificadores tipo T_ID (letra (letra|digito|_)*)
-# Se mantiene por compatibilidad con el dashboard estático anterior.
-# ---------------------------------------------------------------------------
 
 AFND_ID = AFND(
     nombre="AFND_ID",
@@ -267,9 +246,6 @@ AFD_ID = AFD(
 )
 
 
-# ---------------------------------------------------------------------------
-# AFD/AFND para NUM_INT  ->  ^\d+$
-# ---------------------------------------------------------------------------
 
 AFND_NUM_INT = AFND(
     nombre="AFND_NUM_INT",
@@ -297,10 +273,6 @@ AFD_NUM_INT = AFD(
     clasificador=clase_numerica,
 )
 
-
-# ---------------------------------------------------------------------------
-# AFD/AFND para NUM_DECIMAL  ->  ^\d+\.\d{2}$
-# ---------------------------------------------------------------------------
 
 AFND_NUM_DECIMAL = AFND(
     nombre="AFND_NUM_DECIMAL",
@@ -333,11 +305,6 @@ AFD_NUM_DECIMAL = AFD(
     estados_finales=["q4"],
     clasificador=clase_numerica,
 )
-
-
-# ---------------------------------------------------------------------------
-# AFD/AFND para FECHA -> ^\d{2}/\d{2}/\d{4}$
-# ---------------------------------------------------------------------------
 
 AFND_FECHA = AFND(
     nombre="AFND_FECHA",
@@ -376,11 +343,6 @@ AFD_FECHA = AFD(
 AFD_FECHA.estados.insert(-1, "q8b")
 
 
-# ---------------------------------------------------------------------------
-# AFD para palabras reservadas COMPRA / VENTA (autómata por reconocimiento
-# de cadena literal letra a letra, util y sencillo para visualizar)
-# ---------------------------------------------------------------------------
-
 def construir_afd_palabra(palabra: str, nombre: str) -> AFD:
     estados = [f"q{i}" for i in range(len(palabra) + 1)]
     transiciones = {}
@@ -405,7 +367,7 @@ AFD_COMPRA = construir_afd_palabra("COMPRA", "AFD_COMPRA")
 AFD_VENTA = construir_afd_palabra("VENTA", "AFD_VENTA")
 
 
-# Registro central para acceso por nombre desde Flask
+
 AUTOMATAS = {
     "PRODUCTO": {"afnd": AFND_PRODUCTO, "afd": AFD_PRODUCTO},
     "ID": {"afnd": AFND_ID, "afd": AFD_ID},
